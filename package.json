@@ -1,0 +1,26 @@
+{
+  "name": "reelgrab",
+  "version": "1.0.0",
+  "description": "ReelGrab — a clean, expandable web app that converts online video to MP4 and MP3.",
+  "type": "module",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18.18"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "youtube",
+    "converter",
+    "mp4",
+    "mp3",
+    "yt-dlp",
+    "ffmpeg"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
