@@ -1,12 +1,24 @@
 import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
-import { promises as fs } from 'node:fs';
+import { promises as fs, existsSync } from 'node:fs';
 import path from 'node:path';
 import { config } from '../config.js';
 
 // Unique marker we prepend to progress lines so they're trivial to parse and
 // can never collide with yt-dlp's own output.
 const PROG = '[[PROG]]';
+
+/** If a cookies file is present, pass it to yt-dlp (gets past datacenter bot checks). */
+function cookieArgs() {
+  try {
+    if (config.cookiesFile && existsSync(config.cookiesFile)) {
+      return ['--cookies', config.cookiesFile];
+    }
+  } catch {
+    /* ignore */
+  }
+  return [];
+}
 
 /** Turn a raw spawn failure into a message a human can act on. */
 function launchError(e) {
@@ -48,7 +60,7 @@ function getVersion(bin, args) {
  */
 export function fetchInfo(url) {
   return new Promise((resolve, reject) => {
-    const args = ['--dump-single-json', '--no-warnings', '--no-playlist', url];
+    const args = ['--dump-single-json', '--no-warnings', '--no-playlist', ...cookieArgs(), url];
     let json = '';
     let err = '';
     let p;
@@ -92,6 +104,7 @@ export function runDownload({ url, args, outDir }) {
     '--progress-template',
     `download:${PROG}%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s`,
     ...(process.env.FFMPEG_PATH ? ['--ffmpeg-location', process.env.FFMPEG_PATH] : []),
+    ...cookieArgs(),
     ...args,
     url,
   ];

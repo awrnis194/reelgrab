@@ -23,6 +23,11 @@ export const config = {
   ytdlpPath: process.env.YTDLP_PATH || 'yt-dlp',
   ffmpegPath: process.env.FFMPEG_PATH || 'ffmpeg',
 
+  // Optional YouTube cookies (Netscape format) to get past datacenter bot checks.
+  // On Render: add a Secret File named `cookies.txt` → it mounts at /etc/secrets/cookies.txt.
+  // Locally this path won't exist, so it's simply ignored.
+  cookiesFile: process.env.COOKIES_FILE || '/etc/secrets/cookies.txt',
+
   // How long a finished file is kept on disk before automatic cleanup.
   jobTTLms: Number(process.env.JOB_TTL_MS) || 1000 * 60 * 30, // 30 minutes
 
