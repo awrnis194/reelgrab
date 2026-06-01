@@ -1,0 +1,14 @@
+# Render Blueprint — deploys ReelGrab on the free plan.
+# In Render: New ⊕ → Blueprint → pick the `reelgrab` repo → Apply.
+services:
+  - type: web
+    name: reelgrab
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
