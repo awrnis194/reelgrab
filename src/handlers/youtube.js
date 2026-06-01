@@ -30,6 +30,10 @@ function videoSelector(quality) {
 // MP3 target bitrates (kbps).
 const AUDIO_BITRATES = new Set(['320', '256', '192', '128']);
 
+// Try multiple YouTube player clients — some get past the "confirm you're not a
+// bot" challenge on datacenter IPs (cloud hosts) without needing cookies.
+const PLAYER_ARGS = ['--extractor-args', 'youtube:player_client=default,tv,mweb,web_safari'];
+
 const youtube = {
   id: 'youtube',
   name: 'YouTube',
@@ -57,7 +61,7 @@ const youtube = {
   },
 
   async fetchMetadata(url) {
-    const info = await fetchInfo(url.trim());
+    const info = await fetchInfo(url.trim(), PLAYER_ARGS);
     return normalizeInfo(info);
   },
 
@@ -84,6 +88,7 @@ function buildArgs({ format, quality, outDir }) {
   if (format === 'mp3') {
     const bitrate = AUDIO_BITRATES.has(String(quality)) ? String(quality) : '320';
     return [
+      ...PLAYER_ARGS,
       '-x',
       '--audio-format', 'mp3',
       '--audio-quality', `${bitrate}K`,
@@ -95,6 +100,7 @@ function buildArgs({ format, quality, outDir }) {
   // Default to MP4 video.
   const selector = videoSelector(quality);
   return [
+    ...PLAYER_ARGS,
     '-f', selector,
     '--merge-output-format', 'mp4',
     '--embed-metadata',

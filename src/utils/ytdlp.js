@@ -58,9 +58,9 @@ function getVersion(bin, args) {
  * Fetch full metadata for a URL as JSON. yt-dlp does the heavy lifting of
  * extracting title / thumbnail / duration / formats for any supported site.
  */
-export function fetchInfo(url) {
+export function fetchInfo(url, extraArgs = []) {
   return new Promise((resolve, reject) => {
-    const args = ['--dump-single-json', '--no-warnings', '--no-playlist', ...cookieArgs(), url];
+    const args = ['--dump-single-json', '--no-warnings', '--no-playlist', ...cookieArgs(), ...extraArgs, url];
     let json = '';
     let err = '';
     let p;
