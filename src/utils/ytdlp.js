@@ -9,24 +9,21 @@ import { config } from '../config.js';
 // can never collide with yt-dlp's own output.
 const PROG = '[[PROG]]';
 
-// Cached path to the writable cookies copy (see cookieArgs).
-let cookiesPathCache = null;
+let cookieSeq = 0;
 
 /**
  * If a cookies file is present, pass it to yt-dlp (gets past datacenter bot
- * checks). yt-dlp writes refreshed cookies *back* to the file, but Render mounts
- * Secret Files as read-only — so we copy the secret to a writable temp file once
- * and hand yt-dlp that, avoiding "[Errno 30] Read-only file system" errors.
+ * checks). Render mounts Secret Files read-only AND yt-dlp writes refreshed
+ * cookies *back*, so we copy the pristine secret to a unique writable temp file
+ * for EACH call. That avoids "[Errno 30] Read-only file system" and stops
+ * concurrent jobs from corrupting each other's cookies.
  */
 function cookieArgs() {
   if (!config.cookiesFile || !existsSync(config.cookiesFile)) return [];
   try {
-    if (!cookiesPathCache || !existsSync(cookiesPathCache)) {
-      const dest = path.join(os.tmpdir(), 'reelgrab-cookies.txt');
-      copyFileSync(config.cookiesFile, dest);
-      cookiesPathCache = dest;
-    }
-    return ['--cookies', cookiesPathCache];
+    const dest = path.join(os.tmpdir(), `reelgrab-cookies-${process.pid}-${cookieSeq++}.txt`);
+    copyFileSync(config.cookiesFile, dest);
+    return ['--cookies', dest];
   } catch {
     // Couldn't make a writable copy — fall back to the original (read-only) path.
     return ['--cookies', config.cookiesFile];
