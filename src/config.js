@@ -46,31 +46,43 @@ export const config = {
   // proxy the media bytes back to us. Each is a POOL: we try instances in order
   // and fail over on any error/rate-limit. Override via comma-separated env vars
   // when instances come and go (they do) — no code redeploy required.
-  // Ordered best-first (verified working at build time). The pool fails over on
-  // any error and promotes whichever responds, so stale entries are harmless —
-  // but keep COBALT_INSTANCES handy to refresh as instances come and go.
+  // Ordered best-first (✓ = verified working at build time, 2026-06-02). The
+  // pool races all instances in parallel and promotes whichever responds first,
+  // so dead/stale entries cost nothing — they just auto-rejoin if they recover.
+  // Refresh anytime via the COBALT_INSTANCES env var (no code redeploy).
   cobaltInstances: list(
     process.env.COBALT_INSTANCES,
     [
-      'https://co.otomir23.me/',
-      'https://co.eepy.today/',
+      'https://co.otomir23.me/', // ✓ tunnel, 1080 h264
+      'https://co.eepy.today/', // ✓ local-processing, 1080
       'https://cobalt-api.kwiatekmiki.com/',
       'https://capi.oak.li/',
       'https://dl.khub.app/',
       'https://cobalt.255.ru/',
+      'https://yt.opnxng.com/',
+      'https://c.19a.uk/',
+      'https://api.dwnld.uk/',
+      'https://dwnld.nichole.dev/',
+      'https://cobalt.fkn.lol/',
+      'https://cobalt.aelms.com/',
     ],
     { trailingSlash: true },
   ),
   pipedInstances: list(
     process.env.PIPED_INSTANCES,
     [
-      'https://api.piped.private.coffee',
+      'https://api.piped.private.coffee', // ✓ responds
+      'https://pipedapi.in.projectsegfau.lt',
+      'https://cf.piped.video',
       'https://pipedapi.kavin.rocks',
       'https://pipedapi.adminforge.de',
       'https://api.piped.yt',
       'https://pipedapi.reallyaweso.me',
       'https://pipedapi.ducks.party',
       'https://piped-api.codespace.cz',
+      'https://pipedapi.nosebs.ru',
+      'https://pipedapi.leptons.xyz',
+      'https://pipedapi.darkness.services',
     ],
     { trailingSlash: false },
   ),
