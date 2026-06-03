@@ -2,10 +2,32 @@ import express from 'express';
 import { promises as fs } from 'node:fs';
 import { registry } from '../registry.js';
 import { createJob, getJob, publicJob, cancelJob } from '../converter.js';
+import { config } from '../config.js';
+import { resolveCobalt, resolvePiped } from '../utils/providers.js';
 
 export const api = express.Router();
 
-api.get('/health', (_req, res) => res.json({ ok: true }));
+// Quick liveness; add ?deep=1 to actually probe one Cobalt + one Piped instance
+// against a known video (handy for "is the engine working?" from a browser).
+api.get('/health', async (req, res) => {
+  const base = {
+    ok: true,
+    providers: { cobalt: config.cobaltInstances.length, piped: config.pipedInstances.length },
+  };
+  if (req.query.deep === undefined) return res.json(base);
+
+  const probe = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+  const check = async (fn) => {
+    try {
+      const plan = await fn(probe, { format: 'mp4', quality: '360' });
+      return { ok: true, via: plan.via, kind: plan.kind };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  };
+  const [cobalt, piped] = await Promise.all([check(resolveCobalt), check(resolvePiped)]);
+  res.json({ ...base, deep: { cobalt, piped }, healthy: cobalt.ok || piped.ok });
+});
 
 /** Supported platforms + their formats, for the frontend to render dynamically. */
 api.get('/sources', (_req, res) => {

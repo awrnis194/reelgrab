@@ -44,14 +44,12 @@ app.listen(config.port, config.host, () => {
   console.log(`  │  ✦  ReelGrab — Media Converter`);
   console.log(`  │  →  http://localhost:${config.port}`);
   console.log(`  │`);
-  console.log(`  │  yt-dlp : ${bins.ytdlp ? '✓ ' + bins.ytdlp : '✗ NOT FOUND'}`);
+  console.log(`  │  engine : Cobalt ×${config.cobaltInstances.length} · Piped ×${config.pipedInstances.length} (primary)`);
   console.log(`  │  ffmpeg : ${bins.ffmpeg ? '✓ installed' : '✗ NOT FOUND'}`);
+  console.log(`  │  yt-dlp : ${bins.ytdlp ? '✓ ' + bins.ytdlp + ' (fallback)' : '✗ not found (fallback off)'}`);
   console.log(`  └${line}┘\n`);
 
-  if (!bins.ytdlp) {
-    console.warn('  ⚠  yt-dlp is required. Install it, then restart. See README.md.\n');
-  }
   if (!bins.ffmpeg) {
-    console.warn('  ⚠  ffmpeg is required for MP3 extraction and MP4 merging. See README.md.\n');
+    console.warn('  ⚠  ffmpeg is required for MP3 encoding and MP4 merging. See README.md.\n');
   }
 });
