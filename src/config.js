@@ -75,8 +75,10 @@ export const config = {
     { trailingSlash: false },
   ),
 
-  // Per-instance request timeout when resolving a stream.
-  providerTimeoutMs: Number(process.env.PROVIDER_TIMEOUT_MS) || 20000,
+  // Per-instance resolve timeout. Instances are raced in parallel, so the fast
+  // one wins well under this; the cap just bounds how long a hung instance can
+  // stall a pool that has no healthy member.
+  providerTimeoutMs: Number(process.env.PROVIDER_TIMEOUT_MS) || 12000,
 
   // Try yt-dlp straight to YouTube as a final fallback. Rarely succeeds from a
   // datacenter, but it's free and handles odd cases (and works locally).

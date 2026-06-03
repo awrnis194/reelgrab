@@ -58,6 +58,51 @@ function promote(pool, instance) {
   }
 }
 
+/**
+ * Resolve across an ENTIRE pool in parallel and return the first instance that
+ * succeeds — instead of trying them one-by-one and waiting out each timeout.
+ * The moment one wins, the losing requests are aborted (polite to the free
+ * instances); we only reject once every instance has failed.
+ */
+function raceResolve(pool, attempt, timeoutMs = config.providerTimeoutMs) {
+  const snapshot = [...pool];
+  if (snapshot.length === 0) return Promise.reject(new Error('empty pool'));
+  return new Promise((resolve, reject) => {
+    const controllers = snapshot.map(() => new AbortController());
+    const errors = [];
+    let remaining = snapshot.length;
+    let settled = false;
+
+    snapshot.forEach((instance, i) => {
+      const signal = AbortSignal.any([controllers[i].signal, AbortSignal.timeout(timeoutMs)]);
+      Promise.resolve()
+        .then(() => attempt(instance, signal))
+        .then((result) => {
+          if (settled) return;
+          settled = true;
+          controllers.forEach((c, j) => {
+            if (j !== i) {
+              try {
+                c.abort();
+              } catch {
+                /* noop */
+              }
+            }
+          });
+          promote(pool, instance);
+          resolve(result);
+        })
+        .catch((e) => {
+          errors.push(`${hostOf(instance)}: ${e?.message || e}`);
+          remaining -= 1;
+          if (remaining === 0 && !settled) {
+            reject(new Error(`pool exhausted — ${errors.join(' | ')}`));
+          }
+        });
+    });
+  });
+}
+
 // ── Cobalt ──────────────────────────────────────────────────────────────────
 
 function cobaltBody(url, format, quality) {
@@ -111,29 +156,21 @@ function cobaltPlan(data, format) {
   throw new Error(`unexpected cobalt status "${status}"`);
 }
 
-/** Resolve via the Cobalt pool. Throws if every instance fails. */
-export async function resolveCobalt(url, { format, quality }) {
-  const pool = config.cobaltInstances;
-  const errors = [];
-  for (const instance of [...pool]) {
-    try {
-      const res = await fetch(instance, {
-        method: 'POST',
-        headers: jsonHeaders,
-        body: JSON.stringify(cobaltBody(url, format, quality)),
-        signal: timeout(config.providerTimeoutMs),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data) throw new Error(`HTTP ${res.status}`);
-      const plan = cobaltPlan(data, format);
-      promote(pool, instance);
-      plan.via = `cobalt:${hostOf(instance)}`;
-      return plan;
-    } catch (e) {
-      errors.push(`${hostOf(instance)}: ${e.message}`);
-    }
-  }
-  throw new Error(`Cobalt pool exhausted — ${errors.join(' | ')}`);
+/** Resolve via the Cobalt pool — all instances raced in parallel. */
+export function resolveCobalt(url, { format, quality }) {
+  return raceResolve(config.cobaltInstances, async (instance, signal) => {
+    const res = await fetch(instance, {
+      method: 'POST',
+      headers: jsonHeaders,
+      body: JSON.stringify(cobaltBody(url, format, quality)),
+      signal,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data) throw new Error(`HTTP ${res.status}`);
+    const plan = cobaltPlan(data, format);
+    plan.via = `cobalt:${hostOf(instance)}`;
+    return plan;
+  });
 }
 
 // ── Piped ───────────────────────────────────────────────────────────────────
@@ -190,31 +227,21 @@ function bestAudio(audioStreams) {
     .find((s) => s.url);
 }
 
-/** Resolve via the Piped pool. Throws if every instance fails. */
-export async function resolvePiped(url, { format, quality }) {
+/** Resolve via the Piped pool — all instances raced in parallel. */
+export function resolvePiped(url, { format, quality }) {
   const id = youtubeId(url);
-  if (!id) throw new Error('could not parse video id');
-  const pool = config.pipedInstances;
-  const errors = [];
-  for (const instance of [...pool]) {
-    try {
-      const res = await fetch(`${instance}/streams/${id}`, {
-        headers: { Accept: 'application/json', 'User-Agent': UA },
-        signal: timeout(config.providerTimeoutMs),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data || data.error) {
-        throw new Error(data?.error || `HTTP ${res.status}`);
-      }
-      const plan = pipedPlan(data, format, quality);
-      promote(pool, instance);
-      plan.via = `piped:${hostOf(instance)}`;
-      return plan;
-    } catch (e) {
-      errors.push(`${hostOf(instance)}: ${e.message}`);
-    }
-  }
-  throw new Error(`Piped pool exhausted — ${errors.join(' | ')}`);
+  if (!id) return Promise.reject(new Error('could not parse video id'));
+  return raceResolve(config.pipedInstances, async (instance, signal) => {
+    const res = await fetch(`${instance}/streams/${id}`, {
+      headers: { Accept: 'application/json', 'User-Agent': UA },
+      signal,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || data.error) throw new Error(data?.error || `HTTP ${res.status}`);
+    const plan = pipedPlan(data, format, quality);
+    plan.via = `piped:${hostOf(instance)}`;
+    return plan;
+  });
 }
 
 // ── Metadata (preview card) ──────────────────────────────────────────────────
@@ -226,71 +253,76 @@ export async function resolvePiped(url, { format, quality }) {
  */
 export async function youtubeMetadata(url) {
   const id = youtubeId(url);
-  const oembed = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
 
-  let base = null;
-  try {
-    const res = await fetch(oembed, {
-      headers: { 'User-Agent': UA, Accept: 'application/json' },
-      signal: timeout(8000),
-    });
-    if (res.ok) base = await res.json();
-  } catch {
-    /* fall through to Piped */
-  }
+  // Run both lookups at once so the preview is as fast as the quicker of them.
+  const [base, meta] = await Promise.all([oembed(url), pipedMeta(id).catch(() => null)]);
 
   let duration = null;
   let maxHeight = null;
-  try {
-    const meta = await pipedMeta(id);
-    if (meta) {
-      duration = meta.duration ?? duration;
-      maxHeight = meta.maxHeight ?? maxHeight;
-      if (!base) base = { title: meta.title, author_name: meta.uploader, thumbnail_url: meta.thumbnail };
-    }
-  } catch {
-    /* best effort */
+  let info = base;
+  if (meta) {
+    duration = meta.duration ?? null;
+    maxHeight = meta.maxHeight ?? null;
+    if (!info) info = { title: meta.title, author_name: meta.uploader, thumbnail_url: meta.thumbnail };
   }
 
-  if (!base) throw new Error('Couldn’t load that video’s info. The link may be private or invalid.');
+  if (!info) throw new Error('Couldn’t load that video’s info. The link may be private or invalid.');
 
   return {
     id,
-    title: base.title || 'Untitled',
-    channel: base.author_name || null,
+    title: info.title || 'Untitled',
+    channel: info.author_name || null,
     duration: Number.isFinite(duration) ? duration : null,
     durationText: formatDuration(duration),
-    thumbnail: base.thumbnail_url || (id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : null),
+    thumbnail: info.thumbnail_url || (id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : null),
     maxHeight,
     webpageUrl: id ? `https://www.youtube.com/watch?v=${id}` : url,
     isLive: false,
   };
 }
 
+/** YouTube oEmbed — public, datacenter-safe, fast. Title + channel + thumbnail. */
+async function oembed(url) {
+  const endpoint = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+  try {
+    const res = await fetch(endpoint, {
+      headers: { 'User-Agent': UA, Accept: 'application/json' },
+      signal: timeout(6000),
+    });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Duration + quality ladder from Piped — instances raced, short timeout. */
 async function pipedMeta(id) {
   if (!id) return null;
-  for (const instance of [...config.pipedInstances]) {
-    try {
-      const res = await fetch(`${instance}/streams/${id}`, {
-        headers: { Accept: 'application/json', 'User-Agent': UA },
-        signal: timeout(4000),
-      });
-      if (!res.ok) continue;
-      const d = await res.json();
-      if (d?.error) continue;
-      const heights = (d.videoStreams || []).map((s) => parseHeight(s.quality)).filter(Boolean);
-      return {
-        title: d.title,
-        uploader: d.uploader,
-        thumbnail: d.thumbnailUrl,
-        duration: d.duration,
-        maxHeight: heights.length ? Math.max(...heights) : null,
-      };
-    } catch {
-      /* try next */
-    }
+  try {
+    return await raceResolve(
+      config.pipedInstances,
+      async (instance, signal) => {
+        const res = await fetch(`${instance}/streams/${id}`, {
+          headers: { Accept: 'application/json', 'User-Agent': UA },
+          signal,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const d = await res.json();
+        if (d?.error) throw new Error(d.error);
+        const heights = (d.videoStreams || []).map((s) => parseHeight(s.quality)).filter(Boolean);
+        return {
+          title: d.title,
+          uploader: d.uploader,
+          thumbnail: d.thumbnailUrl,
+          duration: d.duration,
+          maxHeight: heights.length ? Math.max(...heights) : null,
+        };
+      },
+      4000,
+    );
+  } catch {
+    return null;
   }
-  return null;
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
