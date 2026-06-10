@@ -36,17 +36,19 @@ npm run dev        # auto-restarts on server changes
 
 ## Rate limits & caching
 
-CoinGecko's keyless tier is tight (~5–15 calls/min), so every request goes
-through a localStorage cache: prices/markets 60s, chart data 5min, historical
-snapshots 24h. Steady state is ~2 calls/min. On a `429` or network failure the
-app serves the last cached values, shows a "rates delayed" badge, and backs off
-exponentially (30s → 5min) — a failed poll never blanks the UI.
+CoinGecko's keyless tier rate-limits per IP, so browsers never call it
+directly: the client hits the server's `/api/cg/*` proxy, which holds one
+shared in-memory cache for all visitors (prices/markets 60s, chart data 5min,
+historical snapshots 24h) and serves stale data when upstream fails. The
+client adds its own localStorage cache + exponential backoff on top, and the
+UI boots from a built-in coin list — a dead market feed never blanks the page,
+it just shows a "rates delayed" badge and retries.
 
 ### Optional API key
 
-Set `COINGECKO_KEY` (a free CoinGecko **Demo** key) in the server environment to
-raise the limits. The client fetches it from `/api/config` and sends it as the
-`x-cg-demo-api-key` header. The app works fine without it.
+Set `COINGECKO_KEY` (a free CoinGecko **Demo** key) in the server environment
+and the proxy sends it as the `x-cg-demo-api-key` header to raise upstream
+limits. The app works fine without it.
 
 ## Deploy
 

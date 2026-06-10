@@ -27,24 +27,31 @@ function paintTicker(markets) {
   }
 }
 
-async function boot() {
-  let markets;
-  try {
-    markets = await getMarkets();
-  } catch {
-    document.getElementById('marketBody').innerHTML =
-      `<tr class="market-table__empty"><td colspan="7">Couldn't reach the market API — it will retry automatically.</td></tr>`;
-    setTimeout(boot, 45_000);
-    return;
-  }
+// Known majors so every control works the instant the page opens, even if the
+// market feed is down. Real data replaces this as soon as it arrives.
+const FALLBACK_COINS = [
+  { id: 'bitcoin', symbol: 'btc', name: 'Bitcoin' },
+  { id: 'ethereum', symbol: 'eth', name: 'Ethereum' },
+  { id: 'tether', symbol: 'usdt', name: 'Tether' },
+  { id: 'ripple', symbol: 'xrp', name: 'XRP' },
+  { id: 'binancecoin', symbol: 'bnb', name: 'BNB' },
+  { id: 'solana', symbol: 'sol', name: 'Solana' },
+  { id: 'usd-coin', symbol: 'usdc', name: 'USDC' },
+  { id: 'dogecoin', symbol: 'doge', name: 'Dogecoin' },
+  { id: 'cardano', symbol: 'ada', name: 'Cardano' },
+  { id: 'tron', symbol: 'trx', name: 'TRON' },
+  { id: 'chainlink', symbol: 'link', name: 'Chainlink' },
+  { id: 'avalanche-2', symbol: 'avax', name: 'Avalanche' },
+  { id: 'polkadot', symbol: 'dot', name: 'Polkadot' },
+  { id: 'litecoin', symbol: 'ltc', name: 'Litecoin' },
+];
 
-  paintTicker(markets);
-  updatedEl.textContent = timeAgo(status.lastUpdated);
-
-  const converter = initConverter({ coins: markets });
-  const pnl = initPnl({ coins: markets });
-  const whatIf = initWhatIf({ coins: markets });
-  const chart = initTvChart({ coins: markets });
+function boot() {
+  // Everything renders immediately — no component waits on the market feed.
+  const converter = initConverter({ coins: FALLBACK_COINS });
+  const pnl = initPnl({ coins: FALLBACK_COINS });
+  const whatIf = initWhatIf({ coins: FALLBACK_COINS });
+  const chart = initTvChart({ coins: FALLBACK_COINS });
   const table = initMarketTable({
     onSelect(id) {
       chart.setCoin(id);
@@ -53,25 +60,39 @@ async function boot() {
       document.getElementById('detail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     },
   });
-  table.update(markets);
   table.setSelected('bitcoin');
 
-  // 60s poll — cache TTLs make this exactly one markets call per cycle, and a
-  // failed poll silently serves the previous data (never blanks the UI).
-  setInterval(async () => {
+  let haveData = false;
+
+  async function refresh() {
     try {
-      const next = await getMarkets();
-      paintTicker(next);
-      table.update(next);
-      pnl.update(next);
-      whatIf.update(next);
-      chart.update(next);
-      converter.setCoins(next);
+      const markets = await getMarkets();
+      haveData = true;
+      paintTicker(markets);
+      table.update(markets);
+      pnl.update(markets);
+      whatIf.update(markets);
+      chart.update(markets);
+      converter.setCoins(markets);
       converter.refresh();
     } catch {
-      // status badge already shows "rates delayed" via onStatus
+      if (!haveData) {
+        document.getElementById('marketBody').innerHTML =
+          `<tr class="market-table__empty"><td colspan="7">Couldn't reach the market feed — retrying automatically.</td></tr>`;
+      }
+      // With data already on screen, a failed poll just keeps the old values;
+      // the "rates delayed" badge is driven by onStatus.
     }
-  }, POLL_MS);
+  }
+
+  refresh().then(() => {
+    // Until the first successful load, retry briskly; then settle into polling.
+    const fast = setInterval(async () => {
+      if (haveData) return clearInterval(fast);
+      await refresh();
+    }, 20_000);
+  });
+  setInterval(refresh, POLL_MS);
 }
 
 boot();

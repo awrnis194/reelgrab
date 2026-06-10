@@ -1,8 +1,9 @@
-// CoinGecko data layer: every call goes through a localStorage-backed cache
-// with a TTL, and a shared backoff so a 429 never turns into a hammering loop.
+// Market data layer. Requests go to our own server's /api/cg proxy (which
+// holds a shared server-side CoinGecko cache), then through a localStorage
+// cache with a TTL and a backoff so failures never turn into hammering loops.
 // On failure we serve the last cached value (however old) and flag "delayed".
 
-const BASE = 'https://api.coingecko.com/api/v3';
+const BASE = '/api/cg';
 const CACHE_PREFIX = 'rg:';
 
 const TTL = {
@@ -24,16 +25,6 @@ export function onStatus(fn) {
 function setStatus(patch) {
   Object.assign(status, patch);
   for (const fn of listeners) fn(status);
-}
-
-// ── optional demo API key (raises rate limits; app works without it) ────────
-let keyPromise = null;
-function getKey() {
-  keyPromise ??= fetch('/api/config')
-    .then((r) => (r.ok ? r.json() : {}))
-    .then((c) => c.coingeckoKey || null)
-    .catch(() => null);
-  return keyPromise;
 }
 
 // ── localStorage cache (tolerates quota errors / private mode) ──────────────
@@ -88,10 +79,7 @@ async function cachedFetch(path, ttl) {
 
   const p = (async () => {
     try {
-      const key = await getKey();
-      const res = await fetch(BASE + path, {
-        headers: key ? { 'x-cg-demo-api-key': key } : {},
-      });
+      const res = await fetch(BASE + path);
       if (!res.ok) {
         noteFailure(res.status === 429);
         if (hit) return hit.data;
