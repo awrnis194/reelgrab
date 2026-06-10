@@ -27,6 +27,18 @@ function setStatus(patch) {
   for (const fn of listeners) fn(status);
 }
 
+// ── bootstrap payload ────────────────────────────────────────────────────────
+// The server inlines a fresh markets+prices snapshot into index.html, so the
+// first paint needs zero API round-trips. Treated as live for 90s, after
+// which the normal fetch path takes over.
+const boot = typeof window !== 'undefined' ? window.__BOOTSTRAP__ : null;
+const BOOT_MAX_AGE = 90_000;
+
+function fromBoot(kind) {
+  if (!boot || Date.now() - boot.t > BOOT_MAX_AGE) return null;
+  return boot[kind] || null;
+}
+
 // ── localStorage cache (tolerates quota errors / private mode) ──────────────
 function cacheGet(key) {
   try {
@@ -115,6 +127,11 @@ export function isFiat(id) {
 
 /** Top 100 coins by market cap, with 7d sparkline and 24h change. */
 export function getMarkets() {
+  const m = fromBoot('markets');
+  if (m) {
+    setStatus({ delayed: false, lastUpdated: boot.t });
+    return Promise.resolve(m);
+  }
   return cachedFetch(
     '/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=true&price_change_percentage=24h',
     TTL.markets,
@@ -123,9 +140,13 @@ export function getMarkets() {
 
 /** Spot prices for a set of coin ids in usd/eur/gbp. */
 export function getSimplePrice(ids) {
-  const sorted = [...new Set(ids)].sort().join(',');
+  const unique = [...new Set(ids)].sort();
+  const p = fromBoot('prices');
+  if (p && unique.every((id) => p[id])) {
+    return Promise.resolve(Object.fromEntries(unique.map((id) => [id, p[id]])));
+  }
   return cachedFetch(
-    `/simple/price?ids=${encodeURIComponent(sorted)}&vs_currencies=usd,eur,gbp`,
+    `/simple/price?ids=${encodeURIComponent(unique.join(','))}&vs_currencies=usd,eur,gbp`,
     TTL.price,
   );
 }
