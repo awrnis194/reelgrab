@@ -37,7 +37,9 @@ export function initTvChart({ coins }) {
     if (mapped) return mapped;
     const coin = marketData.find((c) => c.id === id);
     if (!coin) return 'BINANCE:BTCUSDT';
-    return `BINANCE:${coin.symbol.toUpperCase()}USDT`;
+    // No exchange prefix: TradingView resolves the pair on whichever exchange
+    // lists it (forcing BINANCE: 404'd coins like USDY that trade elsewhere).
+    return `${coin.symbol.toUpperCase()}USDT`;
   }
 
   function render(id) {

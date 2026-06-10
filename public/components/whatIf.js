@@ -19,6 +19,7 @@ export function initWhatIf({ coins }) {
 
   let marketData = coins;
   let seq = 0;
+  let retryTimer = null;
 
   const coinSelect = createCoinSelect(document.getElementById('wiCoin'), {
     coins,
@@ -55,6 +56,7 @@ export function initWhatIf({ coins }) {
     }
 
     const mySeq = ++seq;
+    clearTimeout(retryTimer);
     showStatus('Looking up the historical price…');
     try {
       const hist = await getHistory(id, date);
@@ -83,7 +85,10 @@ export function initWhatIf({ coins }) {
       out.then.textContent = fmtFiat(priceThen);
     } catch {
       if (mySeq !== seq) return;
-      showStatus("Couldn't fetch the historical price — try again in a minute.");
+      showStatus("Couldn't fetch the historical price — retrying shortly…");
+      retryTimer = setTimeout(() => {
+        if (mySeq === seq) compute();
+      }, 25_000);
     }
   }
 

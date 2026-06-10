@@ -41,15 +41,23 @@ async function cgGet(cgPath, ttl) {
       cgPath,
       (async () => {
         const key = process.env.COINGECKO_KEY;
-        const upstream = await fetch(CG_BASE + cgPath, {
-          headers: key ? { 'x-cg-demo-api-key': key } : {},
-          signal: AbortSignal.timeout(15_000),
-        });
-        if (!upstream.ok) throw Object.assign(new Error('upstream'), { status: upstream.status });
-        const data = await upstream.json();
-        if (cgCache.size > 300) cgCache.delete(cgCache.keys().next().value);
-        cgCache.set(cgPath, { t: Date.now(), data });
-        return data;
+        // Render's egress IP is shared, so CoinGecko 429s can hit even at our
+        // low volume — retry twice with a pause before giving up.
+        for (let attempt = 0; ; attempt++) {
+          const upstream = await fetch(CG_BASE + cgPath, {
+            headers: key ? { 'x-cg-demo-api-key': key } : {},
+            signal: AbortSignal.timeout(15_000),
+          });
+          if (upstream.status === 429 && attempt < 2) {
+            await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+            continue;
+          }
+          if (!upstream.ok) throw Object.assign(new Error('upstream'), { status: upstream.status });
+          const data = await upstream.json();
+          if (cgCache.size > 300) cgCache.delete(cgCache.keys().next().value);
+          cgCache.set(cgPath, { t: Date.now(), data });
+          return data;
+        }
       })().finally(() => cgInflight.delete(cgPath)),
     );
   }
@@ -62,10 +70,24 @@ async function cgGet(cgPath, ttl) {
   }
 }
 
+// Spot-price requests for any warmed coin are answered straight from the
+// last warm snapshot — no upstream call, so they can never rate-limit.
+function sliceWarmPrices(cgPath) {
+  if (!warmPrices || Date.now() - warmPrices.t > 90_000) return null;
+  if (!cgPath.startsWith('/simple/price?')) return null;
+  const ids = (new URL('http://x' + cgPath).searchParams.get('ids') || '').split(',').filter(Boolean);
+  if (!ids.length || !ids.every((id) => warmPrices.data[id])) return null;
+  return Object.fromEntries(ids.map((id) => [id, warmPrices.data[id]]));
+}
+
 app.get('/api/cg/*', async (req, res) => {
   const cgPath = req.originalUrl.slice('/api/cg'.length);
   const rule = CG_TTLS.find(([re]) => re.test(cgPath));
   if (!rule) return res.status(400).json({ error: 'unsupported path' });
+
+  const warm = sliceWarmPrices(cgPath);
+  if (warm) return res.json(warm);
+
   try {
     res.json(await cgGet(cgPath, rule[1]));
   } catch (err) {
@@ -81,6 +103,7 @@ const MARKETS_PATH =
   '/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=true&price_change_percentage=24h';
 
 let bootstrap = null;
+let warmPrices = null; // { t, data } — usd/eur/gbp spot prices for all top-100 ids
 
 // Sparklines downsample to ~40 points — the table only draws ~30 — which keeps
 // the inlined payload small.
@@ -93,9 +116,12 @@ function downsample(arr, n) {
 async function warm() {
   try {
     const markets = await cgGet(MARKETS_PATH, 55_000);
-    const ids = [...new Set(['bitcoin', 'ethereum', ...markets.slice(0, 20).map((c) => c.id)])].sort();
+    // One call covers spot prices for every coin in the table, so any
+    // converter/P&L selection can be answered without touching upstream.
+    const ids = [...new Set(markets.map((c) => c.id))].sort();
     const pricePath = `/simple/price?ids=${encodeURIComponent(ids.join(','))}&vs_currencies=usd,eur,gbp`;
     const prices = await cgGet(pricePath, 55_000);
+    warmPrices = { t: Date.now(), data: prices };
     bootstrap = {
       t: Date.now(),
       markets: markets.map((c) => ({
