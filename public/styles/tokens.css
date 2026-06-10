@@ -1,0 +1,31 @@
+/* ReelGrab design tokens — "precision instrument": dark, petrol accent. */
+:root {
+  --ink: #0e1419;
+  --surface: #141c24;
+  --surface-2: #1b2630;
+  --line: #26333f;
+  --petrol: #1fb8b0;
+  --petrol-dim: #14807b;
+  --gain: #2fd27d;
+  --loss: #f2555a;
+  --text: #e7eef2;
+  --muted: #8da0ad;
+
+  --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-num: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+
+  /* 8px spacing scale */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 16px;
+  --s-4: 24px;
+  --s-5: 32px;
+  --s-6: 48px;
+  --s-7: 64px;
+
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 8px 24px rgba(0, 0, 0, 0.25);
+  --focus-ring: 0 0 0 2px var(--ink), 0 0 0 4px var(--petrol);
+}

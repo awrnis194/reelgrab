@@ -1,28 +1,27 @@
 import express from 'express';
-import { promises as fs } from 'node:fs';
-import { config } from './src/config.js';
-import { registry } from './src/registry.js';
-import { api } from './src/routes/api.js';
-import { probeBinaries } from './src/utils/ytdlp.js';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-// ── Register source handlers ────────────────────────────────────────────────
-// Adding a platform is a one-line change here + one new file in src/handlers/.
-import youtube from './src/handlers/youtube.js';
-registry.register(youtube);
-// import vimeo from './src/handlers/vimeo.js';   registry.register(vimeo);
-// import tiktok from './src/handlers/tiktok.js';  registry.register(tiktok);
+const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
+const port = Number(process.env.PORT || 3000);
+const host = process.env.HOST || '0.0.0.0';
+const prod = process.env.NODE_ENV === 'production';
 
-// ── App ─────────────────────────────────────────────────────────────────────
 const app = express();
 app.disable('x-powered-by');
-app.use(express.json({ limit: '256kb' }));
 
-app.use('/api', api);
-// Cache static assets in production, but revalidate every load in dev so design
-// changes appear on a normal refresh (no hard-reload needed).
+// Render's health check (render.yaml → healthCheckPath) hits this.
+app.get('/api/health', (_req, res) => res.json({ ok: true }));
+
+// Optional CoinGecko demo key. The demo key is a public-tier credential; the
+// client requests it once and sends it as `x-cg-demo-api-key` to raise limits.
+app.get('/api/config', (_req, res) => {
+  res.json({ coingeckoKey: process.env.COINGECKO_KEY || null });
+});
+
 app.use(
-  express.static(config.publicDir, {
-    maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0,
+  express.static(publicDir, {
+    maxAge: prod ? '1h' : 0,
     extensions: ['html'],
   }),
 );
@@ -30,26 +29,9 @@ app.use(
 // Non-API GETs fall back to the single page.
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api')) return next();
-  res.sendFile('index.html', { root: config.publicDir });
+  res.sendFile('index.html', { root: publicDir });
 });
 
-// ── Boot ────────────────────────────────────────────────────────────────────
-await fs.mkdir(config.downloadDir, { recursive: true });
-
-const bins = await probeBinaries();
-
-app.listen(config.port, config.host, () => {
-  const line = '─'.repeat(46);
-  console.log(`\n  ┌${line}┐`);
-  console.log(`  │  ✦  ReelGrab — Media Converter`);
-  console.log(`  │  →  http://localhost:${config.port}`);
-  console.log(`  │`);
-  console.log(`  │  engine : Cobalt ×${config.cobaltInstances.length} · Piped ×${config.pipedInstances.length} (primary)`);
-  console.log(`  │  ffmpeg : ${bins.ffmpeg ? '✓ installed' : '✗ NOT FOUND'}`);
-  console.log(`  │  yt-dlp : ${bins.ytdlp ? '✓ ' + bins.ytdlp + ' (fallback)' : '✗ not found (fallback off)'}`);
-  console.log(`  └${line}┘\n`);
-
-  if (!bins.ffmpeg) {
-    console.warn('  ⚠  ffmpeg is required for MP3 encoding and MP4 merging. See README.md.\n');
-  }
+app.listen(port, host, () => {
+  console.log(`ReelGrab — live crypto calculators · http://localhost:${port}`);
 });

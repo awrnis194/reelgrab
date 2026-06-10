@@ -1,7 +1,7 @@
 {
   "name": "reelgrab",
-  "version": "1.0.0",
-  "description": "ReelGrab — a clean, expandable web app that converts online video to MP4 and MP3.",
+  "version": "2.0.0",
+  "description": "ReelGrab — live crypto calculators: converter, P&L, what-if, market table and charts.",
   "type": "module",
   "main": "server.js",
   "engines": {
@@ -12,12 +12,11 @@
     "dev": "node --watch server.js"
   },
   "keywords": [
-    "youtube",
+    "crypto",
+    "calculator",
     "converter",
-    "mp4",
-    "mp3",
-    "yt-dlp",
-    "ffmpeg"
+    "coingecko",
+    "dashboard"
   ],
   "license": "MIT",
   "dependencies": {
