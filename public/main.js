@@ -1,6 +1,6 @@
 // App orchestration: load markets once, wire components together, poll on 60s.
 
-import { getMarkets, onStatus, status } from './lib/api.js';
+import { getMarkets, status } from './lib/api.js';
 import { fmtFiat, timeAgo } from './lib/format.js';
 import { initConverter } from './components/converter.js';
 import { initPnl } from './components/pnl.js';
@@ -11,11 +11,7 @@ import { initTvChart } from './components/tvChart.js';
 const POLL_MS = 60_000;
 
 const updatedEl = document.getElementById('updatedAgo');
-const delayedEl = document.getElementById('delayedBadge');
 
-onStatus((s) => {
-  delayedEl.hidden = !s.delayed;
-});
 setInterval(() => {
   updatedEl.textContent = timeAgo(status.lastUpdated);
 }, 5000);

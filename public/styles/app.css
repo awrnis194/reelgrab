@@ -138,15 +138,6 @@ a:hover {
   text-align: right;
 }
 
-.ticker__delayed {
-  font-size: 11px;
-  color: var(--ink);
-  background: var(--loss);
-  border-radius: 999px;
-  padding: 1px var(--s-2);
-  font-weight: 600;
-}
-
 /* ───────────────────────── ad slot ───────────────────────── */
 .ad-slot {
   margin-inline: auto;
