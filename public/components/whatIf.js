@@ -91,7 +91,9 @@ export function initWhatIf({ coins }) {
   amountEl.addEventListener('input', debounced);
   dateEl.addEventListener('change', compute);
 
-  compute();
+  // Stagger the initial history call so boot doesn't burst four API requests
+  // at once into CoinGecko's keyless rate limit.
+  setTimeout(compute, 3000);
 
   return {
     update(markets) {

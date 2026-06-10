@@ -38,6 +38,7 @@ export function initChart({ coins }) {
   let chart = null;
   let series = null;
   let seq = 0;
+  let retryTimer = null;
 
   function setLoading(loading) {
     skeleton.hidden = !loading;
@@ -89,8 +90,35 @@ export function initChart({ coins }) {
     });
   }
 
+  function paintRange(values, approx = false) {
+    const hi = Math.max(...values);
+    const lo = Math.min(...values);
+    const label = { 1: '24h', 7: '7d', 30: '30d', 365: '1y' }[days];
+    rangeEl.textContent = `${label} range  ${fmtFiat(lo)} – ${fmtFiat(hi)}${approx ? ' (approx.)' : ''}`;
+  }
+
+  // If market_chart is rate-limited we already hold a 7d hourly sparkline for
+  // every top-100 coin — good enough to draw the 24h and 7d views from.
+  async function renderFallback() {
+    if (days !== 1 && days !== 7) return false;
+    const week = marketData.find((x) => x.id === coinId)?.sparkline_in_7d?.price;
+    if (!week?.length) return false;
+    try {
+      await ensureChart();
+    } catch {
+      return false;
+    }
+    const pts = days === 1 ? week.slice(-25) : week;
+    const now = Math.floor(Date.now() / 1000);
+    series.setData(pts.map((v, i) => ({ time: now - (pts.length - 1 - i) * 3600, value: v })));
+    chart.timeScale().fitContent();
+    paintRange(pts, true);
+    return true;
+  }
+
   async function load() {
     const mySeq = ++seq;
+    clearTimeout(retryTimer);
     setLoading(true);
     showError(false);
     paintHeader();
@@ -102,17 +130,20 @@ export function initChart({ coins }) {
 
       series.setData(points);
       chart.timeScale().fitContent();
-
-      const values = points.map((p) => p.value);
-      const hi = Math.max(...values);
-      const lo = Math.min(...values);
-      const label = { 1: '24h', 7: '7d', 30: '30d', 365: '1y' }[days];
-      rangeEl.textContent = `${label} range  ${fmtFiat(lo)} – ${fmtFiat(hi)}`;
+      paintRange(points.map((p) => p.value));
       setLoading(false);
     } catch {
       if (mySeq !== seq) return;
+      if (await renderFallback()) {
+        if (mySeq === seq) setLoading(false);
+        return;
+      }
       setLoading(false);
       showError(true);
+      // Rate limits clear on their own — retry once the backoff has room.
+      retryTimer = setTimeout(() => {
+        if (!errorBox.hidden) load();
+      }, 40_000);
     }
   }
 
