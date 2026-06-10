@@ -663,108 +663,16 @@ input[type='date'].input::-webkit-calendar-picker-indicator {
   font-family: var(--font-ui);
 }
 
-/* ───────────────────────── detail chart ───────────────────────── */
-.card__head--chart {
-  align-items: flex-start;
+/* ───────────────────────── detail chart (TradingView embed) ───────────────── */
+.detail__picker {
+  width: min(280px, 100%);
 }
 
-.detail__meta {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-1);
-}
-
-.detail__nums {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 600;
-  display: flex;
-  gap: var(--s-3);
-  align-items: baseline;
-}
-
-.detail__change {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.detail__range {
-  margin: 0;
-  font-size: 12px;
-}
-
-.seg {
-  display: inline-flex;
+.tv-chart-host {
+  height: 520px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
   background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: 2px;
-  gap: 2px;
-}
-
-.seg__btn {
-  border: 0;
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  padding: var(--s-1) var(--s-3);
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.seg__btn:hover {
-  color: var(--text);
-}
-
-.seg__btn--active {
-  background: var(--line);
-  color: var(--text);
-}
-
-.chart-host {
-  position: relative;
-  height: 360px;
-}
-
-.chart-canvas {
-  position: absolute;
-  inset: 0;
-}
-
-.chart-skeleton {
-  position: absolute;
-  inset: 0;
-  /* Lightweight Charts' internal canvases use z-index up to 2 — sit above them. */
-  z-index: 5;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(100deg, var(--surface-2) 40%, var(--line) 50%, var(--surface-2) 60%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s linear infinite;
-}
-
-@keyframes shimmer {
-  to {
-    background-position: -200% 0;
-  }
-}
-
-.chart-error {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s-3);
-  color: var(--muted);
-  background: var(--surface);
-  z-index: 6;
-}
-
-.chart-error p {
-  margin: 0;
 }
 
 /* ───────────────────────── footer ───────────────────────── */
@@ -837,7 +745,7 @@ input[type='date'].input::-webkit-calendar-picker-indicator {
     grid-template-columns: 1fr;
   }
 
-  .chart-host {
-    height: 280px;
+  .tv-chart-host {
+    height: 400px;
   }
 }

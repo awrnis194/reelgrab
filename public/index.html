@@ -205,33 +205,16 @@
         </div>
       </section>
 
-      <!-- Detail chart -->
+      <!-- Detail chart (TradingView widget — has its own data + date controls) -->
       <section class="detail" id="detail" aria-labelledby="detail-title">
         <div class="card">
-          <div class="card__head card__head--chart">
-            <div class="detail__meta">
-              <h2 id="detail-title" class="card__title detail__coin">Bitcoin</h2>
-              <p class="detail__nums num">
-                <span id="detailPrice">—</span>
-                <span id="detailChange" class="detail__change"></span>
-              </p>
-              <p class="detail__range muted num" id="detailRange"></p>
-            </div>
-            <div class="seg" role="group" aria-label="Chart timeframe" id="tfSwitch">
-              <button type="button" class="seg__btn" data-days="1">24h</button>
-              <button type="button" class="seg__btn seg__btn--active" data-days="7" aria-pressed="true">7d</button>
-              <button type="button" class="seg__btn" data-days="30">30d</button>
-              <button type="button" class="seg__btn" data-days="365">1y</button>
+          <div class="card__head">
+            <h2 id="detail-title" class="card__title">Chart</h2>
+            <div class="detail__picker">
+              <div id="tvCoin"></div>
             </div>
           </div>
-          <div class="chart-host" id="chartHost">
-            <div class="chart-canvas" id="chartCanvas"></div>
-            <div class="chart-skeleton" id="chartSkeleton" aria-hidden="true"></div>
-            <div class="chart-error" id="chartError" hidden>
-              <p>Couldn't load this chart.</p>
-              <button type="button" class="btn" id="chartRetry">Retry</button>
-            </div>
-          </div>
+          <div class="tv-chart-host" id="tvChart"></div>
         </div>
       </section>
     </main>

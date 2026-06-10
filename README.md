@@ -6,7 +6,7 @@ A real-time crypto calculator + market dashboard at [reelgrab.xyz](https://reelg
 - **Profit / loss** — buy/sell price, quantity or invested-amount mode, optional per-side fee %
 - **What if I'd invested** — historical price on a past date vs. value today
 - **Market table** — top 50 coins with price, 24h %, 7d sparkline, cap, volume
-- **Detail chart** — Lightweight Charts area chart with 24h / 7d / 30d / 1y timeframes
+- **Detail chart** — embedded TradingView Advanced Chart (own data feed, symbol search, custom date ranges)
 
 All market data comes client-side from the free [CoinGecko API](https://www.coingecko.com/en/api).
 The backend is a tiny Express static server (kept for the existing Render Docker deploy).
@@ -23,7 +23,7 @@ public/
 ├─ styles/app.css
 ├─ lib/api.js                 # CoinGecko fetch + localStorage cache + backoff
 ├─ lib/format.js              # currency / % / compact formatting, tween, debounce
-└─ components/                # coinSelect, converter, pnl, whatIf, marketTable, chart
+└─ components/                # coinSelect, converter, pnl, whatIf, marketTable, tvChart
 ```
 
 ## Run locally

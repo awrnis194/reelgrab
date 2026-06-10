@@ -6,7 +6,7 @@ import { initConverter } from './components/converter.js';
 import { initPnl } from './components/pnl.js';
 import { initWhatIf } from './components/whatIf.js';
 import { initMarketTable } from './components/marketTable.js';
-import { initChart } from './components/chart.js';
+import { initTvChart } from './components/tvChart.js';
 
 const POLL_MS = 60_000;
 
@@ -44,7 +44,7 @@ async function boot() {
   const converter = initConverter({ coins: markets });
   const pnl = initPnl({ coins: markets });
   const whatIf = initWhatIf({ coins: markets });
-  const chart = initChart({ coins: markets });
+  const chart = initTvChart({ coins: markets });
   const table = initMarketTable({
     onSelect(id) {
       chart.setCoin(id);
