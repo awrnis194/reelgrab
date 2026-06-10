@@ -24,6 +24,7 @@ export function createCoinSelect(mount, opts) {
     <button type="button" class="combo__btn" id="${id}-btn"
       aria-haspopup="listbox" aria-expanded="false" aria-label="${opts.label}">
       <img class="combo__icon" alt="" hidden />
+      <span class="combo__icon combo__icon--fiat" aria-hidden="true" hidden></span>
       <span class="combo__sym"></span>
       <span class="combo__name"></span>
       <svg class="combo__caret" viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true">
@@ -41,7 +42,8 @@ export function createCoinSelect(mount, opts) {
   const panel = mount.querySelector('.combo__panel');
   const search = mount.querySelector('.combo__search');
   const list = mount.querySelector('.combo__list');
-  const icon = mount.querySelector('.combo__icon');
+  const icon = mount.querySelector('img.combo__icon');
+  const fiatIcon = mount.querySelector('.combo__icon--fiat');
   const sym = mount.querySelector('.combo__sym');
   const name = mount.querySelector('.combo__name');
 
@@ -67,11 +69,15 @@ export function createCoinSelect(mount, opts) {
     if (!o) return;
     sym.textContent = o.symbol.toUpperCase();
     name.textContent = o.name;
+    icon.hidden = true;
+    fiatIcon.hidden = true;
     if (o.image) {
       icon.src = o.image;
       icon.hidden = false;
-    } else {
-      icon.hidden = true;
+    } else if (o.sign) {
+      fiatIcon.textContent = o.sign;
+      fiatIcon.style.setProperty('--fiat-c', o.color);
+      fiatIcon.hidden = false;
     }
   }
 
@@ -97,7 +103,13 @@ export function createCoinSelect(mount, opts) {
         return `${group}<li class="combo__opt${i === activeIndex ? ' combo__opt--active' : ''}"
           id="${id}-opt-${i}" role="option" data-idx="${i}"
           aria-selected="${o.id === value}">
-          ${o.image ? `<img class="combo__icon" src="${o.image}" alt="" loading="lazy" />` : `<span class="combo__icon" aria-hidden="true"></span>`}
+          ${
+            o.image
+              ? `<img class="combo__icon" src="${o.image}" alt="" loading="lazy" />`
+              : o.sign
+                ? `<span class="combo__icon combo__icon--fiat" style="--fiat-c:${o.color}" aria-hidden="true">${o.sign}</span>`
+                : `<span class="combo__icon" aria-hidden="true"></span>`
+          }
           <span class="combo__sym">${o.symbol.toUpperCase()}</span>
           <span class="combo__name">${o.name}</span>
         </li>`;

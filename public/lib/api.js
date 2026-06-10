@@ -116,9 +116,9 @@ async function cachedFetch(path, ttl) {
 
 // ── public API ───────────────────────────────────────────────────────────────
 export const FIATS = [
-  { id: 'usd', symbol: 'USD', name: 'US Dollar', sign: '$' },
-  { id: 'eur', symbol: 'EUR', name: 'Euro', sign: '€' },
-  { id: 'gbp', symbol: 'GBP', name: 'British Pound', sign: '£' },
+  { id: 'usd', symbol: 'USD', name: 'US Dollar', sign: '$', color: '#3fbf6f' },
+  { id: 'eur', symbol: 'EUR', name: 'Euro', sign: '€', color: '#4d7cfe' },
+  { id: 'gbp', symbol: 'GBP', name: 'British Pound', sign: '£', color: '#8e6cf1' },
 ];
 
 export function isFiat(id) {

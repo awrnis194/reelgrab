@@ -401,6 +401,19 @@ input[type='date'].input::-webkit-calendar-picker-indicator {
   background: var(--line);
 }
 
+.combo__icon--fiat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  background: linear-gradient(135deg, var(--fiat-c), color-mix(in srgb, var(--fiat-c) 55%, #0b1318));
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+}
+
 .combo__sym {
   font-weight: 600;
   font-size: 13px;
