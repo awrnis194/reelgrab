@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
 const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || '0.0.0.0';
-const prod = process.env.NODE_ENV === 'production';
 
 const app = express();
 app.disable('x-powered-by');
@@ -62,17 +61,25 @@ app.get('/api/cg/*', async (req, res) => {
   }
 });
 
+// no-cache (NOT no-store): browsers revalidate every load via ETag and get a
+// cheap 304 unless a deploy changed the file — fixes shipping going stale in
+// visitors' tabs for an hour, which the old `maxAge: 1h` caused.
 app.use(
   express.static(publicDir, {
-    maxAge: prod ? '1h' : 0,
     extensions: ['html'],
+    setHeaders(res) {
+      res.setHeader('Cache-Control', 'no-cache');
+    },
   }),
 );
 
 // Non-API GETs fall back to the single page.
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api')) return next();
-  res.sendFile('index.html', { root: publicDir });
+  res.sendFile('index.html', {
+    root: publicDir,
+    headers: { 'Cache-Control': 'no-cache' },
+  });
 });
 
 app.listen(port, host, () => {
