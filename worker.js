@@ -102,7 +102,9 @@ async function getSnapshot(env, ctx) {
 // Spot-price requests for warmed coins are sliced from the snapshot — no upstream
 // call, so they can never rate-limit. Mirrors Express's sliceWarmPrices().
 function sliceWarmPrices(cgPath, snap) {
-  if (!snap?.parsed || Date.now() - snap.parsed.t > 90_000) return null;
+  // 10-min window (was 90s on Express): CoinGecko throttles Cloudflare egress IPs in
+  // streaks, so a slightly stale slice must beat a 429 error for visitors.
+  if (!snap?.parsed || Date.now() - snap.parsed.t > 600_000) return null;
   const ids = (new URL('http://x' + cgPath).searchParams.get('ids') || '').split(',').filter(Boolean);
   if (!ids.length || !ids.every((id) => snap.parsed.prices[id])) return null;
   return Object.fromEntries(ids.map((id) => [id, snap.parsed.prices[id]]));
@@ -121,7 +123,7 @@ async function handleCg(cgPath, env, ctx) {
       if (warm) return json(warm, 200, 30);
     } else if (cgPath === MARKETS_PATH) {
       const snap = await getSnapshot(env, ctx);
-      if (snap?.parsed && Date.now() - snap.parsed.t < 120_000)
+      if (snap?.parsed && Date.now() - snap.parsed.t < 600_000)
         return json(snap.parsed.markets, 200, 30);
     }
   } catch {

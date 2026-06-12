@@ -17,7 +17,7 @@
   },
   "kv_namespaces": [
     // Holds one key, "bootstrap": the cron-refreshed markets+prices snapshot.
-    { "binding": "CG", "id": "REPLACE_AT_DEPLOY" }
+    { "binding": "CG", "id": "509931e39fb9482a88611f0ccac12858" }
   ],
   "triggers": {
     // Rebuild the snapshot every 2 minutes: 720 KV writes/day < the 1,000 free cap.

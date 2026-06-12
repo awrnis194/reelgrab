@@ -29,11 +29,12 @@ function setStatus(patch) {
 
 // ── bootstrap payload ────────────────────────────────────────────────────────
 // index.html starts fetching /api/bootstrap (edge-cached snapshot) before this
-// module loads, so it usually lands by first paint. Treated as live for 90s,
+// module loads, so it usually lands by first paint. Treated as live for 5 min
+// (the edge cron refreshes every 2; CoinGecko throttle streaks can delay it),
 // after which the normal fetch path takes over. Boot is never blocked for more
 // than 1.5s — if the API is slow/down, the fallback list + localStorage win.
 let boot = typeof window !== 'undefined' ? window.__BOOTSTRAP__ : null;
-const BOOT_MAX_AGE = 90_000;
+const BOOT_MAX_AGE = 300_000;
 
 const bootReady =
   typeof window !== 'undefined' && window.__BOOTSTRAP_READY__
