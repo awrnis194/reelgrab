@@ -22,7 +22,15 @@
     />
     <link rel="stylesheet" href="/styles/tokens.css" />
     <link rel="stylesheet" href="/styles/app.css" />
-    <!--__BOOTSTRAP__-->
+    <script>
+      // Bootstrap snapshot: fetched in parallel with module loading. (The old Express
+      // host inlined it server-side; on Cloudflare the page is a static asset, so the
+      // fetch starts here instead — lib/api.js awaits it briefly, then falls back.)
+      window.__BOOTSTRAP_READY__ = fetch('/api/bootstrap')
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null)
+        .then((b) => (window.__BOOTSTRAP__ = b));
+    </script>
     <script type="module" src="/main.js"></script>
   </head>
   <body>

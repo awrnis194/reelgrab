@@ -1,0 +1,27 @@
+// ReelGrab on Cloudflare Workers (free plan) — replaced Render 2026-06-12 after its
+// 5 GB/month bandwidth cap suspended the site. Static assets are unmetered here.
+// Deploy: npx wrangler deploy   (KV namespace id below must exist in the account:
+//         npx wrangler kv namespace create CG)
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "reelgrab",
+  "main": "worker.js",
+  "compatibility_date": "2026-06-01",
+  "assets": {
+    // Everything in public/ is served directly from Cloudflare's edge — these requests
+    // never invoke the Worker, don't count against the 100k/day free request cap, and
+    // carry no bandwidth charge. single-page-application = unknown paths get index.html.
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  "kv_namespaces": [
+    // Holds one key, "bootstrap": the cron-refreshed markets+prices snapshot.
+    { "binding": "CG", "id": "REPLACE_AT_DEPLOY" }
+  ],
+  "triggers": {
+    // Rebuild the snapshot every 2 minutes: 720 KV writes/day < the 1,000 free cap.
+    "crons": ["*/2 * * * *"]
+  },
+  "observability": { "enabled": true }
+}
