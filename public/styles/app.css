@@ -155,6 +155,42 @@ a:hover {
   margin-bottom: var(--s-2);
 }
 
+/* Framed border around the 300x250 ad unit — petrol-accented panel */
+.ad-slot__frame {
+  position: relative;
+  width: max-content;
+  margin-inline: auto;
+  padding: 10px;
+  border-radius: var(--radius);
+  background:
+    linear-gradient(155deg, rgba(31, 184, 176, 0.14), rgba(27, 38, 48, 0.92) 55%),
+    var(--surface-2);
+  border: 1px solid rgba(31, 184, 176, 0.32);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 0 22px rgba(31, 184, 176, 0.16),
+    0 12px 30px rgba(0, 0, 0, 0.42);
+}
+
+/* thin petrol accent strip along the top edge */
+.ad-slot__frame::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 18%;
+  right: 18%;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--petrol), transparent);
+  opacity: 0.85;
+}
+
+/* clip the ad's white corners to match the frame radius */
+.ad-slot__frame #frame {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
 /* ───────────────────────── layout ───────────────────────── */
 .page {
   max-width: 1080px;
